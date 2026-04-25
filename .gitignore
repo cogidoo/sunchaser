@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+dist/
+coverage/
+*.local
+
+app/node_modules/
+app/dist/
+app/.vite/
+app/*.tsbuildinfo
+app/node_modules/.tmp/
