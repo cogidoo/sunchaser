@@ -57,10 +57,14 @@ function App() {
     ? status
     : 'Fuer diesen Ort und Tag gibt es keinen Sonnenuntergang. Strassenfluchten koennen nicht berechnet werden.'
 
-  function updateCenter(nextCenter: { lat: number; lon: number }) {
+  function updateCenter(nextCenter: { lat: number; lon: number }, shouldRecenterMap = false) {
     locationIntentRef.current += 1
     setCenter(nextCenter)
     setLocationTimeZone(resolveLocationTimeZone(nextCenter.lat, nextCenter.lon))
+
+    if (shouldRecenterMap) {
+      mapRef.current?.easeTo({ center: [nextCenter.lon, nextCenter.lat], duration: 500 })
+    }
   }
 
   useEffect(() => {
@@ -175,10 +179,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    mapRef.current?.easeTo({ center: [center.lon, center.lat], duration: 500 })
-  }, [center.lat, center.lon])
-
-  useEffect(() => {
     const map = mapRef.current
     const source = map?.getSource(SEGMENT_SOURCE_ID) as GeoJSONSource | undefined
 
@@ -260,7 +260,7 @@ function App() {
           return
         }
 
-        updateCenter({ lat: position.coords.latitude, lon: position.coords.longitude })
+        updateCenter({ lat: position.coords.latitude, lon: position.coords.longitude }, true)
         setStatus('Standort gesetzt. Sonnenuntergangsdaten wurden aktualisiert.')
       },
       () => {
@@ -273,7 +273,7 @@ function App() {
   }
 
   function selectResult(result: GeocodeResult) {
-    updateCenter({ lat: result.lat, lon: result.lon })
+    updateCenter({ lat: result.lat, lon: result.lon }, true)
     setQuery(result.label)
     setResults([])
     setStatus('Adresse gesetzt. Die Karte ist bereit fuer die Strassenanalyse.')
