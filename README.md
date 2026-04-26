@@ -19,6 +19,7 @@ Highlighted streets are geometric candidates only. Buildings, trees, terrain, an
 - Basemap/style: OpenFreeMap-hosted MapLibre style with OSM-derived map data.
 - Geocoding: Nominatim/OpenStreetMap search, requested only after explicit address search.
 - Street geometry: Overpass API for bounded OSM street-centerline queries.
+- Timezone lookup: `tz-lookup` package data in the browser for best-effort IANA timezone resolution.
 
 This static app calls public browser-accessible providers directly and does not run a backend proxy or shared cache. Availability is best-effort: providers can rate-limit, reject, time out, or change service behavior. The app keeps map interaction usable when a provider request fails, but it does not provide production uptime guarantees for third-party services.
 

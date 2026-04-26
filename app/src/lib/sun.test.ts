@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getSunsetInfo, normalizeDegrees, toCardinal } from './sun'
+import { getSunsetInfo, normalizeDegrees, toCardinal, zonedDateTimeToUtc } from './sun'
 
 describe('sun utilities', () => {
   it('normalizes degrees', () => {
@@ -14,11 +14,18 @@ describe('sun utilities', () => {
   })
 
   it('calculates a plausible Berlin sunset azimuth in late April', () => {
-    const info = getSunsetInfo('2026-04-26', 52.52, 13.405)
+    const info = getSunsetInfo('2026-04-26', 52.52, 13.405, 'Europe/Berlin')
 
     expect(info.azimuth).toBeGreaterThan(290)
     expect(info.azimuth).toBeLessThan(310)
     expect(info.cardinal).toBe('NW')
     expect(Number.isNaN(info.sunset.getTime())).toBe(false)
+  })
+
+  it('interprets selected dates in the active location timezone', () => {
+    expect(zonedDateTimeToUtc('2026-04-26', 'Europe/Berlin', 12).toISOString()).toBe('2026-04-26T10:00:00.000Z')
+    expect(zonedDateTimeToUtc('2026-04-26', 'America/Los_Angeles', 12).toISOString()).toBe(
+      '2026-04-26T19:00:00.000Z',
+    )
   })
 })

@@ -3,7 +3,6 @@
 Help users discover nearby street alignments where the sunset direction matches the street axis for a selected date and location.
 
 ## Requirements
-
 ### Requirement: Static deployment
 The system SHALL be deployable to GitHub Pages as a static single-page web application without a paid server or always-running backend.
 
@@ -53,21 +52,21 @@ The system SHALL evaluate sunset alignment for a selected calendar date at the a
 
 #### Scenario: User changes date
 - **WHEN** the user selects a different date
-- **THEN** the system recalculates sunset alignment for the selected date
+- **THEN** the system recalculates sunset alignment for the selected date in the active location's timezone
 - **AND** the map updates highlighted street segments accordingly
 
 #### Scenario: Search location differs from browser timezone
 - **WHEN** the active search location is in a different timezone from the user's browser
 - **THEN** the system interprets the selected calendar date for the active search location
-- **AND** the system displays sunset time for the active search location
+- **AND** the system displays sunset time for the active search location with timezone context
 
 ### Requirement: Sunset calculation
-The system SHALL calculate sunset time and sunset azimuth for the active search location and selected date.
+The system SHALL calculate sunset time and sunset azimuth for the active search location and selected location-local date.
 
 #### Scenario: Sunset data is calculated
 - **WHEN** the system has an active search location and selected date
-- **THEN** the system calculates the local sunset time
-- **AND** the system calculates the sunset azimuth in degrees from north
+- **THEN** the system calculates the local sunset time for the active search location
+- **AND** the system calculates the sunset azimuth in degrees from north for the active search location
 
 ### Requirement: Street data retrieval
 The system SHALL retrieve OSM street centerline geometry for the active map analysis area and exclude footway, cycleway, path, and service-road candidates from default alignment results.
@@ -87,7 +86,7 @@ The system SHALL retrieve OSM street centerline geometry for the active map anal
 - **AND** the system prompts the user to zoom in or analyzes only the capped area around the map center
 
 #### Scenario: Street data cannot be retrieved
-- **WHEN** street geometry retrieval fails
+- **WHEN** street geometry retrieval fails or times out
 - **THEN** the system shows an error state that preserves map usability
 - **AND** the system allows the user to retry by changing the map area or refreshing the query
 
@@ -139,6 +138,10 @@ The system SHALL use map and geodata sources in compliance with their usage and 
 #### Scenario: Production basemap is configured
 - **WHEN** the system is configured for production usage
 - **THEN** the system does not use `tile.openstreetmap.org` as its primary tile source
+
+#### Scenario: External providers are documented
+- **WHEN** the project documents deployment or production use
+- **THEN** the system identifies externally hosted provider dependencies and their best-effort availability constraints
 
 ### Requirement: Segment details
 The system SHALL show alignment details when a highlighted street segment is selected.

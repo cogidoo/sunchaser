@@ -6,7 +6,8 @@ import { appConfig } from './config'
 import { buildAlignedSegments, toSegmentFeatureCollection, type StreetSegment } from './lib/geometry'
 import { searchAddress, type GeocodeResult } from './lib/geocoding'
 import { boundsDiagonalKilometers, fetchStreetWays, type Bounds } from './lib/overpass'
-import { formatDegrees, getSunsetInfo } from './lib/sun'
+import { formatDegrees, formatSunsetTime, getSunsetInfo } from './lib/sun'
+import { formatTimeZoneLabel, resolveLocationTimeZone, type LocationTimeZone } from './lib/timezone'
 
 const SEGMENT_SOURCE_ID = 'sunset-segments'
 const SEGMENT_LAYER_ID = 'sunset-segments-line'
@@ -21,6 +22,9 @@ function App() {
   const analysisRequestRef = useRef(0)
   const addressSearchRequestRef = useRef(0)
   const [center, setCenter] = useState(appConfig.defaultCenter)
+  const [locationTimeZone, setLocationTimeZone] = useState<LocationTimeZone>(() =>
+    resolveLocationTimeZone(appConfig.defaultCenter.lat, appConfig.defaultCenter.lon),
+  )
   const [activeBounds, setActiveBounds] = useState<Bounds | null>(null)
   const [date, setDate] = useState(todayInputValue)
   const [query, setQuery] = useState('')
@@ -32,11 +36,16 @@ function App() {
 
   const sunset = useMemo(() => {
     try {
-      return getSunsetInfo(date, center.lat, center.lon)
+      return getSunsetInfo(date, center.lat, center.lon, locationTimeZone.timeZone)
     } catch {
       return null
     }
-  }, [center.lat, center.lon, date])
+  }, [center.lat, center.lon, date, locationTimeZone.timeZone])
+
+  function updateCenter(nextCenter: { lat: number; lon: number }) {
+    setCenter(nextCenter)
+    setLocationTimeZone(resolveLocationTimeZone(nextCenter.lat, nextCenter.lon))
+  }
 
   useEffect(() => {
     if (!mapNode.current || mapRef.current) {
@@ -135,7 +144,7 @@ function App() {
       const nextCenter = map?.getCenter()
 
       if (nextCenter) {
-        setCenter({ lat: nextCenter.lat, lon: nextCenter.lng })
+        updateCenter({ lat: nextCenter.lat, lon: nextCenter.lng })
       }
 
       if (map) {
@@ -222,7 +231,7 @@ function App() {
     setStatus('Standort wird abgefragt...')
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setCenter({ lat: position.coords.latitude, lon: position.coords.longitude })
+        updateCenter({ lat: position.coords.latitude, lon: position.coords.longitude })
         setStatus('Standort gesetzt. Sonnenuntergangsdaten wurden aktualisiert.')
       },
       () => setStatus('Standort wurde nicht freigegeben. Du kannst eine Adresse suchen oder die Karte verschieben.'),
@@ -231,7 +240,7 @@ function App() {
   }
 
   function selectResult(result: GeocodeResult) {
-    setCenter({ lat: result.lat, lon: result.lon })
+    updateCenter({ lat: result.lat, lon: result.lon })
     setQuery(result.label)
     setResults([])
     setStatus('Adresse gesetzt. Die Karte ist bereit fuer die Strassenanalyse.')
@@ -341,10 +350,11 @@ function App() {
           <span>Sonnenuntergang</span>
           {sunset ? (
             <>
-              <strong>{sunset.sunset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+              <strong>{formatSunsetTime(sunset.sunset, locationTimeZone.timeZone)}</strong>
               <p>
                 Richtung {formatDegrees(sunset.azimuth)} ({sunset.cardinal})
               </p>
+              <p>Zeitzone: {formatTimeZoneLabel(locationTimeZone)}</p>
             </>
           ) : (
             <p>Fuer diesen Ort und Tag wurde kein Sonnenuntergang gefunden.</p>
