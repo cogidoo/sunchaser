@@ -47,6 +47,10 @@ function App() {
       return null
     }
   }, [center.lat, center.lon, date, locationTimeZone.timeZone])
+  const displayedSegments = useMemo(() => (sunset ? segments : []), [segments, sunset])
+  const statusText = sunset
+    ? status
+    : 'Fuer diesen Ort und Tag gibt es keinen Sonnenuntergang. Strassenfluchten koennen nicht berechnet werden.'
 
   function updateCenter(nextCenter: { lat: number; lon: number }) {
     locationIntentRef.current += 1
@@ -173,11 +177,15 @@ function App() {
     const map = mapRef.current
     const source = map?.getSource(SEGMENT_SOURCE_ID) as GeoJSONSource | undefined
 
-    source?.setData(toSegmentFeatureCollection(segments))
-  }, [segments])
+    source?.setData(toSegmentFeatureCollection(displayedSegments))
+  }, [displayedSegments])
 
   useEffect(() => {
-    if (!activeBounds || !sunset) {
+    if (!activeBounds) {
+      return
+    }
+
+    if (!sunset) {
       return
     }
 
@@ -395,9 +403,9 @@ function App() {
           </span>
         </div>
 
-        {segments.length > 0 && (
+        {displayedSegments.length > 0 && (
           <ol className="segment-list" aria-label="Gefundene Strassenabschnitte">
-            {segments.map((segment) => (
+            {displayedSegments.map((segment) => (
               <li key={segment.id}>
                 <button
                   type="button"
@@ -414,7 +422,7 @@ function App() {
           </ol>
         )}
 
-        {selectedSegment && (
+        {sunset && selectedSegment && (
           <div className="segment-details" aria-live="polite">
             <span>Ausgewaehlte Strassenflucht</span>
             <strong>{selectedSegment.name}</strong>
@@ -427,7 +435,7 @@ function App() {
         )}
 
         <p className="status" role="status">
-          {status}
+          {statusText}
         </p>
 
         <p className="disclaimer">
