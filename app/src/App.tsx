@@ -5,7 +5,7 @@ import './App.css'
 import { appConfig } from './config'
 import { buildAlignedSegments, toSegmentFeatureCollection, type StreetSegment } from './lib/geometry'
 import { searchAddress, type GeocodeResult } from './lib/geocoding'
-import { boundsDiagonalKilometers, fetchStreetWays, type Bounds } from './lib/overpass'
+import { boundsDiagonalKilometers, boundsKey, fetchStreetWays, type Bounds } from './lib/overpass'
 import { formatDegrees, formatSunsetTime, getSunsetInfo } from './lib/sun'
 import { formatTimeZoneLabel, resolveLocationTimeZone, type LocationTimeZone } from './lib/timezone'
 
@@ -36,6 +36,7 @@ function App() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [segments, setSegments] = useState<StreetSegment[]>([])
+  const [segmentsAnalysisKey, setSegmentsAnalysisKey] = useState<string | null>(null)
   const [selectedSegment, setSelectedSegment] = useState<StreetSegment | null>(null)
   const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [status, setStatus] = useState('Karte bereit. Nutze Standort oder suche eine Adresse.')
@@ -47,7 +48,11 @@ function App() {
       return null
     }
   }, [center.lat, center.lon, date, locationTimeZone.timeZone])
-  const displayedSegments = useMemo(() => (sunset ? segments : []), [segments, sunset])
+  const currentAnalysisKey = activeBounds && sunset ? analysisKey(activeBounds, date, center, locationTimeZone.timeZone) : null
+  const displayedSegments = useMemo(
+    () => (currentAnalysisKey && currentAnalysisKey === segmentsAnalysisKey ? segments : []),
+    [currentAnalysisKey, segments, segmentsAnalysisKey],
+  )
   const statusText = sunset
     ? status
     : 'Fuer diesen Ort und Tag gibt es keinen Sonnenuntergang. Strassenfluchten koennen nicht berechnet werden.'
@@ -213,6 +218,7 @@ function App() {
 
           const nextSegments = buildAlignedSegments(ways, sunset.azimuth)
           setSegments(nextSegments)
+          setSegmentsAnalysisKey(analysisKey(activeBounds, date, center, locationTimeZone.timeZone))
           setSelectedSegment((current) => nextSegments.find((segment) => segment.id === current?.id) ?? null)
           setStatus(
             nextSegments.length
@@ -226,6 +232,7 @@ function App() {
           }
 
           setSegments([])
+          setSegmentsAnalysisKey(null)
           setSelectedSegment(null)
           setStatus('Strassendaten konnten nicht geladen werden. Bitte zoome naeher heran oder versuche es spaeter erneut.')
         })
@@ -235,7 +242,7 @@ function App() {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [activeBounds, sunset])
+  }, [activeBounds, center, date, locationTimeZone.timeZone, sunset])
 
   function useBrowserLocation() {
     if (!navigator.geolocation) {
@@ -422,7 +429,7 @@ function App() {
           </ol>
         )}
 
-        {sunset && selectedSegment && (
+        {displayedSegments.some((segment) => segment.id === selectedSegment?.id) && selectedSegment && (
           <div className="segment-details" aria-live="polite">
             <span>Ausgewaehlte Strassenflucht</span>
             <strong>{selectedSegment.name}</strong>
@@ -449,6 +456,10 @@ function App() {
       </section>
     </main>
   )
+}
+
+function analysisKey(bounds: Bounds, date: string, center: { lat: number; lon: number }, timeZone: string): string {
+  return [boundsKey(bounds), date, center.lat.toFixed(5), center.lon.toFixed(5), timeZone].join('|')
 }
 
 function readMapBounds(map: Map): Bounds {
