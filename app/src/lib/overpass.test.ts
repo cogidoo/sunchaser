@@ -9,12 +9,12 @@ describe('overpass utilities', () => {
   it('creates stable rounded bounds cache keys', () => {
     expect(
       boundsKey({
-        south: 52.50049,
-        west: 13.40049,
-        north: 52.51049,
-        east: 13.41049,
+        south: 52.500004,
+        west: 13.400004,
+        north: 52.510004,
+        east: 13.410004,
       }),
-    ).toBe('52.500,13.400,52.510,13.410')
+    ).toBe('52.50000,13.40000,52.51000,13.41000')
   })
 
   it('calculates map bounds diagonal', () => {

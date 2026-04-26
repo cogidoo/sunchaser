@@ -38,7 +38,7 @@ const STREET_CENTERLINE_HIGHWAYS = new Set([
 ])
 
 export function boundsKey(bounds: Bounds): string {
-  return [bounds.south, bounds.west, bounds.north, bounds.east].map((value) => value.toFixed(3)).join(',')
+  return [bounds.south, bounds.west, bounds.north, bounds.east].map((value) => value.toFixed(5)).join(',')
 }
 
 export function boundsDiagonalKilometers(bounds: Bounds): number {

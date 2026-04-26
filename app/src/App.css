@@ -298,4 +298,8 @@ input:focus-visible {
   .map-panel {
     min-height: 58svh;
   }
+
+  .map {
+    min-height: 58svh;
+  }
 }

@@ -13,12 +13,17 @@ const SEGMENT_SOURCE_ID = 'sunset-segments'
 const SEGMENT_LAYER_ID = 'sunset-segments-line'
 
 function todayInputValue() {
-  return new Date().toISOString().slice(0, 10)
+  const today = new Date()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+
+  return `${today.getFullYear()}-${month}-${day}`
 }
 
 function App() {
   const mapNode = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
+  const locationIntentRef = useRef(0)
   const analysisRequestRef = useRef(0)
   const addressSearchRequestRef = useRef(0)
   const addressSearchAbortRef = useRef<AbortController | null>(null)
@@ -44,6 +49,7 @@ function App() {
   }, [center.lat, center.lon, date, locationTimeZone.timeZone])
 
   function updateCenter(nextCenter: { lat: number; lon: number }) {
+    locationIntentRef.current += 1
     setCenter(nextCenter)
     setLocationTimeZone(resolveLocationTimeZone(nextCenter.lat, nextCenter.lon))
   }
@@ -230,12 +236,23 @@ function App() {
     }
 
     setStatus('Standort wird abgefragt...')
+    const requestId = locationIntentRef.current + 1
+    locationIntentRef.current = requestId
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (requestId !== locationIntentRef.current) {
+          return
+        }
+
         updateCenter({ lat: position.coords.latitude, lon: position.coords.longitude })
         setStatus('Standort gesetzt. Sonnenuntergangsdaten wurden aktualisiert.')
       },
-      () => setStatus('Standort wurde nicht freigegeben. Du kannst eine Adresse suchen oder die Karte verschieben.'),
+      () => {
+        if (requestId === locationIntentRef.current) {
+          setStatus('Standort wurde nicht freigegeben. Du kannst eine Adresse suchen oder die Karte verschieben.')
+        }
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     )
   }
@@ -405,6 +422,7 @@ function App() {
               {formatDegrees(selectedSegment.deviation)} Abweichung, Blickrichtung{' '}
               {formatDegrees(selectedSegment.matchedBearing)}, {Math.round(selectedSegment.lengthMeters)} m
             </p>
+            {sunset && <p>Sonnenuntergang: {formatSunsetTime(sunset.sunset, locationTimeZone.timeZone)}</p>}
           </div>
         )}
 
