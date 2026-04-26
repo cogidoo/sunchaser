@@ -15,6 +15,16 @@
       "source": "maplibre/maplibre-agent-skills",
       "sourceType": "github",
       "computedHash": "3a54ecb94144f640b88f35a2b3d03e17090d4d07f4dc87a5cc26221885f39d31"
+    },
+    "react-vite-best-practices": {
+      "source": "asyrafhussin/agent-skills",
+      "sourceType": "github",
+      "computedHash": "82994934665a490b227fabdfec3d148b1fa291d77d82ccf978e761b9e1ff6e4c"
+    },
+    "vitest-testing": {
+      "source": "existential-birds/beagle",
+      "sourceType": "github",
+      "computedHash": "8c634cb9b05cf11c40412978784ca246d78a35846ea0d2215e14ee589e3331d4"
     }
   }
 }
