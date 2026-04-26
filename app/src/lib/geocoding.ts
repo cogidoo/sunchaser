@@ -1,3 +1,5 @@
+import { appConfig } from '../config'
+
 export type GeocodeResult = {
   id: string
   label: string
@@ -14,7 +16,7 @@ type NominatimResult = {
 
 const cache = new Map<string, GeocodeResult[]>()
 
-export async function searchAddress(query: string): Promise<GeocodeResult[]> {
+export async function searchAddress(query: string, signal?: AbortSignal): Promise<GeocodeResult[]> {
   const normalized = query.trim().toLowerCase()
 
   if (normalized.length < 3) {
@@ -33,10 +35,13 @@ export async function searchAddress(query: string): Promise<GeocodeResult[]> {
     limit: '5',
   })
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 8000)
+  const abort = () => controller.abort()
+  const timeout = window.setTimeout(() => controller.abort(), appConfig.geocodingTimeoutMs)
+
+  signal?.addEventListener('abort', abort, { once: true })
 
   try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+    const response = await fetch(`${appConfig.nominatimSearchUrl}?${params}`, {
       headers: {
         Accept: 'application/json',
       },
@@ -59,5 +64,6 @@ export async function searchAddress(query: string): Promise<GeocodeResult[]> {
     return results
   } finally {
     window.clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
   }
 }

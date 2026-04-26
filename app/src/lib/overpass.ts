@@ -1,4 +1,5 @@
 import type { Coordinate } from './geometry'
+import { appConfig } from '../config'
 
 export type Bounds = {
   south: number
@@ -22,7 +23,6 @@ export type OverpassResponse = {
   elements: OverpassElement[]
 }
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter'
 const cache = new Map<string, OsmWay[]>()
 const STREET_CENTERLINE_HIGHWAYS = new Set([
   'primary',
@@ -45,7 +45,7 @@ export function boundsDiagonalKilometers(bounds: Bounds): number {
   return haversineKilometers(bounds.south, bounds.west, bounds.north, bounds.east)
 }
 
-export async function fetchStreetWays(bounds: Bounds): Promise<OsmWay[]> {
+export async function fetchStreetWays(bounds: Bounds, signal?: AbortSignal): Promise<OsmWay[]> {
   const key = boundsKey(bounds)
   const cached = cache.get(key)
 
@@ -55,10 +55,13 @@ export async function fetchStreetWays(bounds: Bounds): Promise<OsmWay[]> {
 
   const query = buildQuery(bounds)
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 15_000)
+  const abort = () => controller.abort()
+  const timeout = window.setTimeout(() => controller.abort(), appConfig.overpassTimeoutMs)
+
+  signal?.addEventListener('abort', abort, { once: true })
 
   try {
-    const response = await fetch(OVERPASS_URL, {
+    const response = await fetch(appConfig.overpassUrl, {
       method: 'POST',
       body: new URLSearchParams({ data: query }),
       signal: controller.signal,
@@ -74,6 +77,7 @@ export async function fetchStreetWays(bounds: Bounds): Promise<OsmWay[]> {
     return ways
   } finally {
     window.clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
   }
 }
 

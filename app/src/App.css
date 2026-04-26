@@ -84,6 +84,11 @@ button:hover {
   background: #ffc16f;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
 button:focus-visible,
 input:focus-visible {
   outline: 3px solid rgba(255, 193, 111, 0.65);
@@ -106,6 +111,13 @@ input:focus-visible {
   background: rgba(255, 255, 255, 0.1);
   color: #fffaf2;
   font-weight: 600;
+}
+
+.provider-note {
+  margin: -4px 0 0;
+  color: #bda98c;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .sun-card {
@@ -187,12 +199,20 @@ input:focus-visible {
 }
 
 .segment-list li {
+  display: block;
+}
+
+.segment-list button {
   display: grid;
   gap: 4px;
+  width: 100%;
+  min-height: auto;
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  text-align: left;
 }
 
 .segment-list strong {
@@ -202,6 +222,38 @@ input:focus-visible {
 .segment-list span {
   color: #dbc7a7;
   font-size: 0.86rem;
+}
+
+.segment-list .selected-segment {
+  border-color: rgba(255, 193, 111, 0.8);
+  background: rgba(255, 157, 61, 0.18);
+}
+
+.segment-details {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(255, 193, 111, 0.28);
+  border-radius: 18px;
+  background: rgba(255, 157, 61, 0.1);
+}
+
+.segment-details span {
+  color: #ffcf91;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.segment-details strong {
+  color: #fffaf2;
+}
+
+.segment-details p {
+  margin: 0;
+  color: #dbc7a7;
+  font-size: 0.9rem;
 }
 
 .status {

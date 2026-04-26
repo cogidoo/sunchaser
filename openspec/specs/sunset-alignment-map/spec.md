@@ -34,9 +34,9 @@ The system SHALL allow users to choose the map search location using browser geo
 - **THEN** the system centers the map on that result
 - **AND** the system uses that result as the alignment search center
 
-#### Scenario: Address search is rate limited
-- **WHEN** the user types into the address field
-- **THEN** the system debounces geocoding requests
+#### Scenario: Address search is explicit and cached
+- **WHEN** the user enters an address query
+- **THEN** the system waits for an explicit search action before sending a geocoding request
 - **AND** the system limits repeated requests for the same query by reusing cached results when available
 
 #### Scenario: Address search provider fails

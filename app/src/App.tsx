@@ -1,17 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import maplibregl, { type GeoJSONSource, type Map, type MapLayerMouseEvent } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import './App.css'
+import { appConfig } from './config'
 import { buildAlignedSegments, toSegmentFeatureCollection, type StreetSegment } from './lib/geometry'
 import { searchAddress, type GeocodeResult } from './lib/geocoding'
 import { boundsDiagonalKilometers, fetchStreetWays, type Bounds } from './lib/overpass'
 import { formatDegrees, getSunsetInfo } from './lib/sun'
 
-const DEFAULT_CENTER = { lat: 52.52, lon: 13.405 }
-const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron'
 const SEGMENT_SOURCE_ID = 'sunset-segments'
 const SEGMENT_LAYER_ID = 'sunset-segments-line'
-const MAX_ANALYSIS_DIAGONAL_KM = 12
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10)
@@ -20,12 +18,16 @@ function todayInputValue() {
 function App() {
   const mapNode = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<Map | null>(null)
-  const [center, setCenter] = useState(DEFAULT_CENTER)
+  const analysisRequestRef = useRef(0)
+  const addressSearchRequestRef = useRef(0)
+  const [center, setCenter] = useState(appConfig.defaultCenter)
   const [activeBounds, setActiveBounds] = useState<Bounds | null>(null)
   const [date, setDate] = useState(todayInputValue)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [segments, setSegments] = useState<StreetSegment[]>([])
+  const [selectedSegment, setSelectedSegment] = useState<StreetSegment | null>(null)
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false)
   const [status, setStatus] = useState('Karte bereit. Nutze Standort oder suche eine Adresse.')
 
   const sunset = useMemo(() => {
@@ -43,8 +45,8 @@ function App() {
 
     mapRef.current = new maplibregl.Map({
       container: mapNode.current,
-      style: MAP_STYLE,
-      center: [DEFAULT_CENTER.lon, DEFAULT_CENTER.lat],
+      style: appConfig.mapStyleUrl,
+      center: [appConfig.defaultCenter.lon, appConfig.defaultCenter.lat],
       zoom: 12,
       attributionControl: false,
     })
@@ -163,21 +165,31 @@ function App() {
       return
     }
 
+    const controller = new AbortController()
+    const requestId = analysisRequestRef.current + 1
+    analysisRequestRef.current = requestId
+
     const timeout = window.setTimeout(() => {
       const diagonal = boundsDiagonalKilometers(activeBounds)
 
-      if (diagonal > MAX_ANALYSIS_DIAGONAL_KM) {
+      if (diagonal > appConfig.maxAnalysisDiagonalKm) {
         setSegments([])
+        setSelectedSegment(null)
         setStatus('Zoom weiter hinein, um Strassen zu analysieren. Der sichtbare Bereich ist noch zu gross.')
         return
       }
 
       setStatus('Strassen werden geladen und gegen den Sonnenuntergang abgeglichen...')
 
-      fetchStreetWays(activeBounds)
+      fetchStreetWays(activeBounds, controller.signal)
         .then((ways) => {
+          if (controller.signal.aborted || requestId !== analysisRequestRef.current) {
+            return
+          }
+
           const nextSegments = buildAlignedSegments(ways, sunset.azimuth)
           setSegments(nextSegments)
+          setSelectedSegment((current) => nextSegments.find((segment) => segment.id === current?.id) ?? null)
           setStatus(
             nextSegments.length
               ? `${nextSegments.length} passende Strassenabschnitte gefunden.`
@@ -185,35 +197,21 @@ function App() {
           )
         })
         .catch(() => {
+          if (controller.signal.aborted || requestId !== analysisRequestRef.current) {
+            return
+          }
+
           setSegments([])
+          setSelectedSegment(null)
           setStatus('Strassendaten konnten nicht geladen werden. Bitte zoome naeher heran oder versuche es spaeter erneut.')
         })
     }, 900)
 
-    return () => window.clearTimeout(timeout)
-  }, [activeBounds, sunset])
-
-  useEffect(() => {
-    const trimmed = query.trim()
-
-    if (trimmed.length < 3) {
-      return
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
     }
-
-    const timeout = window.setTimeout(() => {
-      searchAddress(trimmed)
-        .then((nextResults) => {
-          setResults(nextResults)
-          setStatus(nextResults.length ? 'Adresse gefunden. Waehle einen Treffer aus.' : 'Keine Adresse gefunden.')
-        })
-        .catch(() => {
-          setResults([])
-          setStatus('Adresssuche ist gerade nicht erreichbar. Karte und Standort funktionieren weiter.')
-        })
-    }, 700)
-
-    return () => window.clearTimeout(timeout)
-  }, [query])
+  }, [activeBounds, sunset])
 
   function useBrowserLocation() {
     if (!navigator.geolocation) {
@@ -241,10 +239,52 @@ function App() {
 
   function updateQuery(value: string) {
     setQuery(value)
+    setResults([])
+  }
 
-    if (value.trim().length < 3) {
+  function submitAddressSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const trimmed = query.trim()
+
+    if (trimmed.length < 3) {
       setResults([])
+      setStatus('Bitte gib mindestens drei Zeichen fuer die Adresssuche ein.')
+      return
     }
+
+    setIsSearchingAddress(true)
+    setStatus('Adresse wird gesucht...')
+    const requestId = addressSearchRequestRef.current + 1
+    addressSearchRequestRef.current = requestId
+
+    searchAddress(trimmed)
+      .then((nextResults) => {
+        if (requestId !== addressSearchRequestRef.current) {
+          return
+        }
+
+        setResults(nextResults)
+        setStatus(nextResults.length ? 'Adresse gefunden. Waehle einen Treffer aus.' : 'Keine Adresse gefunden.')
+      })
+      .catch(() => {
+        if (requestId !== addressSearchRequestRef.current) {
+          return
+        }
+
+        setResults([])
+        setStatus('Adresssuche ist gerade nicht erreichbar. Karte und Standort funktionieren weiter.')
+      })
+      .finally(() => {
+        if (requestId === addressSearchRequestRef.current) {
+          setIsSearchingAddress(false)
+        }
+      })
+  }
+
+  function focusSegment(segment: StreetSegment) {
+    setSelectedSegment(segment)
+    mapRef.current?.easeTo({ center: segmentCenter(segment), duration: 500 })
   }
 
   return (
@@ -258,7 +298,7 @@ function App() {
           </p>
         </div>
 
-        <div className="controls">
+        <form className="controls" onSubmit={submitAddressSearch}>
           <button type="button" onClick={useBrowserLocation}>
             Standort verwenden
           </button>
@@ -272,6 +312,12 @@ function App() {
               onChange={(event) => updateQuery(event.target.value)}
             />
           </label>
+
+          <button type="submit" disabled={isSearchingAddress}>
+            {isSearchingAddress ? 'Suche laeuft...' : 'Adresse suchen'}
+          </button>
+
+          <p className="provider-note">Adresssuche nutzt Nominatim/OSM nur nach expliziter Suche.</p>
 
           {results.length > 0 && (
             <ul className="search-results" aria-label="Adressvorschlaege">
@@ -289,7 +335,7 @@ function App() {
             Datum
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
-        </div>
+        </form>
 
         <div className="sun-card" aria-live="polite">
           <span>Sonnenuntergang</span>
@@ -318,16 +364,33 @@ function App() {
         </div>
 
         {segments.length > 0 && (
-          <ol className="segment-list" aria-label="Beste Strassenabschnitte">
-            {segments.slice(0, 5).map((segment) => (
+          <ol className="segment-list" aria-label="Gefundene Strassenabschnitte">
+            {segments.map((segment) => (
               <li key={segment.id}>
-                <strong>{segment.name}</strong>
-                <span>
-                  {formatDegrees(segment.deviation)} Abweichung, {Math.round(segment.lengthMeters)} m
-                </span>
+                <button
+                  type="button"
+                  className={segment.id === selectedSegment?.id ? 'selected-segment' : undefined}
+                  onClick={() => focusSegment(segment)}
+                >
+                  <strong>{segment.name}</strong>
+                  <span>
+                    {formatDegrees(segment.deviation)} Abweichung, {Math.round(segment.lengthMeters)} m
+                  </span>
+                </button>
               </li>
             ))}
           </ol>
+        )}
+
+        {selectedSegment && (
+          <div className="segment-details" aria-live="polite">
+            <span>Ausgewaehlte Strassenflucht</span>
+            <strong>{selectedSegment.name}</strong>
+            <p>
+              {formatDegrees(selectedSegment.deviation)} Abweichung, Blickrichtung{' '}
+              {formatDegrees(selectedSegment.matchedBearing)}, {Math.round(selectedSegment.lengthMeters)} m
+            </p>
+          </div>
         )}
 
         <p className="status" role="status">
@@ -382,6 +445,11 @@ function showSegmentPopup(event: MapLayerMouseEvent) {
         `Laenge: ${Math.round(lengthMeters)} m`,
     )
     .addTo(event.target)
+}
+
+function segmentCenter(segment: StreetSegment): [number, number] {
+  const middle = segment.coordinates[Math.floor(segment.coordinates.length / 2)]
+  return middle
 }
 
 function escapeHtml(value: string): string {
