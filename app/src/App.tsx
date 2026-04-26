@@ -21,6 +21,7 @@ function App() {
   const mapRef = useRef<Map | null>(null)
   const analysisRequestRef = useRef(0)
   const addressSearchRequestRef = useRef(0)
+  const addressSearchAbortRef = useRef<AbortController | null>(null)
   const [center, setCenter] = useState(appConfig.defaultCenter)
   const [locationTimeZone, setLocationTimeZone] = useState<LocationTimeZone>(() =>
     resolveLocationTimeZone(appConfig.defaultCenter.lat, appConfig.defaultCenter.lon),
@@ -266,10 +267,13 @@ function App() {
     setStatus('Adresse wird gesucht...')
     const requestId = addressSearchRequestRef.current + 1
     addressSearchRequestRef.current = requestId
+    addressSearchAbortRef.current?.abort()
+    const controller = new AbortController()
+    addressSearchAbortRef.current = controller
 
-    searchAddress(trimmed)
+    searchAddress(trimmed, controller.signal)
       .then((nextResults) => {
-        if (requestId !== addressSearchRequestRef.current) {
+        if (controller.signal.aborted || requestId !== addressSearchRequestRef.current) {
           return
         }
 
@@ -277,7 +281,7 @@ function App() {
         setStatus(nextResults.length ? 'Adresse gefunden. Waehle einen Treffer aus.' : 'Keine Adresse gefunden.')
       })
       .catch(() => {
-        if (requestId !== addressSearchRequestRef.current) {
+        if (controller.signal.aborted || requestId !== addressSearchRequestRef.current) {
           return
         }
 
@@ -286,6 +290,7 @@ function App() {
       })
       .finally(() => {
         if (requestId === addressSearchRequestRef.current) {
+          addressSearchAbortRef.current = null
           setIsSearchingAddress(false)
         }
       })

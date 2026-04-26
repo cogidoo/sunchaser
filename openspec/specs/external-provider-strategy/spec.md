@@ -6,11 +6,15 @@ Define how Sunchaser uses external map, geocoding, and street-data providers in 
 
 ## Requirements
 ### Requirement: Provider Configuration
-The system SHALL centralize externally hosted provider URLs and request limits used for map style, geocoding, and street data retrieval.
+The system SHALL centralize externally hosted provider URLs and request limits used for map style, Nominatim-compatible geocoding, and Overpass-compatible street data retrieval.
 
-#### Scenario: Provider endpoint is changed
-- **WHEN** a provider endpoint needs to be replaced
+#### Scenario: Compatible provider endpoint is changed
+- **WHEN** a Nominatim-compatible or Overpass-compatible endpoint needs to be replaced
 - **THEN** the system can update the configured endpoint without changing unrelated application logic
+
+#### Scenario: Provider protocol changes
+- **WHEN** a replacement provider uses different query parameters, response formats, or query language
+- **THEN** the system requires provider-specific implementation changes beyond endpoint configuration
 
 ### Requirement: Rate-Conscious Provider Usage
 The system SHALL avoid high-frequency automatic requests to public geocoding and street-data providers.

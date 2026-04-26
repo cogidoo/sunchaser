@@ -28,4 +28,18 @@ describe('sun utilities', () => {
       '2026-04-26T19:00:00.000Z',
     )
   })
+
+  it('handles date-line timezones without shifting the selected local date', () => {
+    expect(zonedDateTimeToUtc('2026-01-15', 'Pacific/Kiritimati', 12).toISOString()).toBe(
+      '2026-01-14T22:00:00.000Z',
+    )
+    expect(zonedDateTimeToUtc('2026-01-15', 'Etc/GMT+12', 12).toISOString()).toBe('2026-01-16T00:00:00.000Z')
+  })
+
+  it('handles timezone offsets across DST transition dates', () => {
+    expect(zonedDateTimeToUtc('2026-03-29', 'Europe/Berlin', 12).toISOString()).toBe('2026-03-29T10:00:00.000Z')
+    expect(zonedDateTimeToUtc('2026-11-01', 'America/Los_Angeles', 12).toISOString()).toBe(
+      '2026-11-01T20:00:00.000Z',
+    )
+  })
 })
