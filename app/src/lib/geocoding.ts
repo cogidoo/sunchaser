@@ -36,7 +36,7 @@ export async function searchAddress(query: string, signal?: AbortSignal): Promis
   })
   const controller = new AbortController()
   const abort = () => controller.abort()
-  const timeout = window.setTimeout(() => controller.abort(), appConfig.geocodingTimeoutMs)
+  const timeout = globalThis.setTimeout(() => controller.abort(), appConfig.geocodingTimeoutMs)
 
   signal?.addEventListener('abort', abort, { once: true })
 
@@ -63,7 +63,7 @@ export async function searchAddress(query: string, signal?: AbortSignal): Promis
     cache.set(normalized, results)
     return results
   } finally {
-    window.clearTimeout(timeout)
+    globalThis.clearTimeout(timeout)
     signal?.removeEventListener('abort', abort)
   }
 }

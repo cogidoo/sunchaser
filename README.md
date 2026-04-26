@@ -14,6 +14,14 @@ Live app: https://cogidoo.github.io/sunchaser/
 
 Highlighted streets are geometric candidates only. Buildings, trees, terrain, and other obstructions are not included in the visibility score.
 
+## External Providers
+
+- Basemap/style: OpenFreeMap-hosted MapLibre style with OSM-derived map data.
+- Geocoding: Nominatim/OpenStreetMap search, requested only after explicit address search.
+- Street geometry: Overpass API for bounded OSM street-centerline queries.
+
+This static app calls public browser-accessible providers directly and does not run a backend proxy or shared cache. Availability is best-effort: providers can rate-limit, reject, time out, or change service behavior. The app keeps map interaction usable when a provider request fails, but it does not provide production uptime guarantees for third-party services.
+
 ## Development
 
 ```bash

@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { boundsDiagonalKilometers, boundsKey, parseOverpassWays, type OverpassResponse } from './overpass'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { boundsDiagonalKilometers, boundsKey, fetchStreetWays, parseOverpassWays, type OverpassResponse } from './overpass'
 
 describe('overpass utilities', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('creates stable rounded bounds cache keys', () => {
     expect(
       boundsKey({
@@ -46,5 +50,31 @@ describe('overpass utilities', () => {
         ],
       },
     ])
+  })
+
+  it('rejects failed provider responses', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('server error', { status: 503 })))
+
+    await expect(
+      fetchStreetWays({ south: 52.1, west: 13.1, north: 52.2, east: 13.2 }),
+    ).rejects.toThrow('Overpass request failed with status 503')
+  })
+
+  it('reuses cached street data before calling the provider again', async () => {
+    const bounds = { south: 52.3001, west: 13.3001, north: 52.3009, east: 13.3009 }
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        elements: [
+          { type: 'way', id: 200, nodes: [1, 2], tags: { highway: 'residential', name: 'Cached Street' } },
+          { type: 'node', id: 1, lat: 52.3, lon: 13.3 },
+          { type: 'node', id: 2, lat: 52.3, lon: 13.301 },
+        ],
+      } satisfies OverpassResponse),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchStreetWays(bounds)).resolves.toHaveLength(1)
+    await expect(fetchStreetWays(bounds)).resolves.toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

@@ -70,12 +70,16 @@ The system SHALL calculate sunset time and sunset azimuth for the active search 
 - **AND** the system calculates the sunset azimuth in degrees from north
 
 ### Requirement: Street data retrieval
-The system SHALL retrieve street geometry for the active map analysis area.
+The system SHALL retrieve OSM street centerline geometry for the active map analysis area and exclude footway, cycleway, path, and service-road candidates from default alignment results.
 
 #### Scenario: Map area changes
 - **WHEN** the user pans or zooms the map enough to change the analysis area
-- **THEN** the system retrieves or reuses street geometry for the new area
+- **THEN** the system retrieves or reuses eligible street centerline geometry for the new area
 - **AND** the system avoids unbounded requests by applying a maximum analysis area
+
+#### Scenario: Non-street paths are present in OSM data
+- **WHEN** the retrieved OSM data includes footways, cycleways, paths, or service roads
+- **THEN** the system excludes those ways from default highlighted alignment results
 
 #### Scenario: Map area exceeds maximum analysis size
 - **WHEN** the visible map area exceeds the configured maximum analysis area

@@ -56,7 +56,7 @@ export async function fetchStreetWays(bounds: Bounds, signal?: AbortSignal): Pro
   const query = buildQuery(bounds)
   const controller = new AbortController()
   const abort = () => controller.abort()
-  const timeout = window.setTimeout(() => controller.abort(), appConfig.overpassTimeoutMs)
+  const timeout = globalThis.setTimeout(() => controller.abort(), appConfig.overpassTimeoutMs)
 
   signal?.addEventListener('abort', abort, { once: true })
 
@@ -76,7 +76,7 @@ export async function fetchStreetWays(bounds: Bounds, signal?: AbortSignal): Pro
     cache.set(key, ways)
     return ways
   } finally {
-    window.clearTimeout(timeout)
+    globalThis.clearTimeout(timeout)
     signal?.removeEventListener('abort', abort)
   }
 }
